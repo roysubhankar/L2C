@@ -1,6 +1,7 @@
 import os
 import sys
 import argparse
+from termcolor import colored
 
 import torch
 import torch.nn as nn
@@ -65,8 +66,8 @@ def train(epoch, train_loader, learner, args):
 
         # Prepare the inputs
         if args.use_gpu:
-            input = input.cuda()
-            target = target.cuda()
+            input = input.view(-1, 3, 224, 224).cuda()
+            target = target.view(-1).cuda()
         train_target, eval_target = prepare_task_target(input, target, args)
 
         # Optimization
@@ -108,8 +109,7 @@ def evaluate(eval_loader, model, args):
 
     # Initialize all meters
     confusion = Confusion(args.out_dim)
-
-    print('---- Evaluation ----')
+    print(colored('---- Evaluation ----', 'green'))
     model.eval()
     for i, (input, target) in enumerate(eval_loader):
 
@@ -169,7 +169,13 @@ def run(args):
     # Prepare dataloaders
     loaderFuncs = __import__('dataloaders.'+args.dataset_type)
     loaderFuncs = loaderFuncs.__dict__[args.dataset_type]
-    train_loader, eval_loader = loaderFuncs.__dict__[args.dataset](args.batch_size, args.workers)
+    if args.dataset in ['OfficeHome']:
+        train_loader, eval_loader = loaderFuncs.__dict__[args.dataset](args.batch_size, args.workers, 
+                                                                       args.root_dir,
+                                                                       args.source_name, args.target_name,
+                                                                       args.num_instances)
+    else:
+        train_loader, eval_loader = loaderFuncs.__dict__[args.dataset](args.batch_size, args.workers)
 
     # Prepare the model
     if args.out_dim<0:  # Use ground-truth number of classes/clusters
@@ -221,11 +227,20 @@ def run(args):
         return KPI
 
     # Prepare the learner
-    optim_args = {'lr':args.lr}
+    optim_args = {'lr':args.lr, 'weight_decay': args.weight_decay}
     if args.optimizer=='SGD':
-        optim_args['momentum'] = 0.9
-    optimizer = torch.optim.__dict__[args.optimizer](model.parameters(), **optim_args)
-    scheduler = MultiStepLR(optimizer, milestones=args.schedule, gamma=0.1)
+        optim_args['momentum'] = args.momentum
+    if args.dataset == 'OfficeHome':
+        for name, param in model.named_parameters():
+            if ('layer4' not in name) and ('last' not in name):
+                param.requires_grad = False
+            else:
+                param.requires_grad = True
+        optimizer = torch.optim.__dict__[args.optimizer]([{'params': model.layer4.parameters(), 'lr': args.lr / 10.},
+                                                          {'params': model.last.parameters()}], **optim_args)
+    else:
+        optimizer = torch.optim.__dict__[args.optimizer](model.parameters(), **optim_args)
+    scheduler = MultiStepLR(optimizer, milestones=args.schedule, gamma=0.1) # 0.1
     learner = LearnerClass(model, criterion, optimizer, scheduler)
 
     # Start optimization
@@ -249,15 +264,22 @@ def get_args(argv):
     parser.add_argument('--gpuid', nargs="+", type=int, default=[0],
                         help="The list of gpuid, ex:--gpuid 3 1. Negative value means cpu-only")
     parser.add_argument('--model_type', type=str, default='lenet', help="lenet(default)|vgg|resnet")
-    parser.add_argument('--model_name', type=str, default='LeNet', help="LeNet(default)|LeNetC|VGGS|VGG8|VGG16|ResNet18|ResNet101 ...")
+    parser.add_argument('--model_name', type=str, default='LeNet', help="LeNet(default)|LeNetC|VGGS|VGG8|VGG16|ResNet18|ResNet101|ResNetOH50 ...")
     parser.add_argument('--dataset_type', type=str, default='default')
-    parser.add_argument('--dataset', type=str, default='MNIST', help="MNIST(default)|CIFAR10|CIFAR100|Omniglot|Omniglot_eval_Old_Church_Slavonic ...")
+    parser.add_argument('--source_name', type=str, default='art')
+    parser.add_argument('--target_name', type=str, default='clipart')
+    parser.add_argument('--root_dir', type=str, default='data/')
+    parser.add_argument('--dataset', type=str, default='MNIST', help="MNIST(default)|CIFAR10|CIFAR100|Omniglot|Omniglot_eval_Old_Church_Slavonic|OfficeHome ...")
     parser.add_argument('--out_dim', type=int, default=-1,
                         help="Output dimension of network. Default:-1 (Use ground-truth)")
     parser.add_argument('--workers', type=int, default=2, help="#Thread for dataloader")
     parser.add_argument('--epochs', type=int, default=30, help="End epoch")
-    parser.add_argument('--batch_size', type=int, default=100)
+    parser.add_argument('--batch_size', type=int, default=32)
+    parser.add_argument('--num_instances', type=int, default=4)
     parser.add_argument('--lr', type=float, default=0.001, help="Learning rate")
+    parser.add_argument('--gamma', type=float, default=0.5, help='lr decay factor')
+    parser.add_argument('--momentum', type=float, default=0.9, help='optimizer momentum')
+    parser.add_argument('--weight_decay', type=float, default=1e-4, help='optimizer weight decay')
     parser.add_argument('--loss', type=str, default='MCL', choices=['CE', 'KCL', 'MCL', 'DPS'],
                         help="CE(cross-entropy)|KCL|MCL(default)|DPS(Dense-Pair Similarity)")
     parser.add_argument('--schedule', nargs="+", type=int, default=[10, 20],

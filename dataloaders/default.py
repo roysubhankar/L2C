@@ -1,7 +1,12 @@
+import os
+
 import torch
+import torch.utils.data as data
 import torchvision
 from torchvision import transforms
 from .sampler import RandSubClassSampler
+from PIL import Image
+import numpy as np
 
 
 def MNIST(batch_sz, num_workers=2):
@@ -85,6 +90,91 @@ def CIFAR100(batch_sz, num_workers=2):
     eval_loader.num_classes = 100
 
     return train_loader, eval_loader
+
+def OfficeHome(batch_sz, num_workers=1, root_dir='data/', source_name='art', target_name='clipart', num_instances=4):
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
+    dset_transforms = {
+        'train_transform': transforms.Compose([
+            transforms.RandomResizedCrop(224),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            normalize
+        ]),
+        # no data augmentations
+        'test_transform': transforms.Compose([
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            normalize
+        ])
+    }
+    
+    #train_dataset = torchvision.datasets.ImageFolder(root=os.path.join(root_dir, source_name),
+    #                                                 transform=dset_transforms['train_transform'])
+    train_dataset = OfficeHomeBalancedDataset(root_dir=root_dir, source_name=source_name, num_classes=65, 
+                                              transform=dset_transforms['train_transform'], num_instances=num_instances)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_sz, shuffle=True, num_workers=num_workers)
+    train_loader.num_classes = 65
+
+    test_dataset = torchvision.datasets.ImageFolder(root=os.path.join(root_dir, target_name),
+                                                     transform=dset_transforms['test_transform'])
+    eval_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_sz * num_instances, shuffle=False, num_workers=num_workers)
+    eval_loader.num_classes = 65
+
+    return train_loader, eval_loader
+
+class OfficeHomeBalancedDataset(data.Dataset):
+    def __init__(self, root_dir, source_name, num_classes, transform, num_instances=4):
+        super(OfficeHomeBalancedDataset, self).__init__()
+        self.root_dir = root_dir
+        self.source_name = source_name
+        self.num_instances = num_instances
+        self.source_path = os.path.join(self.root_dir, self.source_name + '.txt')
+        self.num_classes = num_classes
+        self.source_images = self.load_dataset() # create a dict of lists
+        self.transform = transform
+    
+    def load_dataset(self):
+        source_image_list = {key: [] for key in range(self.num_classes)}
+        self.num_images = 0
+        with open(self.source_path) as f:
+            for ind, line in enumerate(f.readlines()):
+                self.num_images += 1
+                image_dir, label = line.split(' ')
+                source_image_list[int(label)].append(image_dir)
+        
+        return source_image_list
+
+    def __len__(self):
+        return int(self.num_images / self.num_instances)
+
+    def __getitem__(self, item):
+        image_data = []
+        label_data = []
+
+        np.random.seed(item)
+        sampled_class = np.random.choice(range(self.num_classes), size=1, replace=False)[0] # pick a class at random
+        t = self.source_images[sampled_class] # get all the instance paths of the sampled class
+        if len(t) >= self.num_instances:
+            sample_idxs = np.random.choice(range(len(t)), size=self.num_instances, replace=False)
+        else:
+            sample_idxs = np.random.choice(range(len(t)), size=self.num_instances, replace=True)
+        
+        # apply image transforms
+        for i, sample_idx in enumerate(sample_idxs):
+            img_path = os.path.join(self.root_dir, self.source_name, self.source_images[sampled_class][sample_idx])
+            img = Image.open(img_path).convert('RGB')
+            if self.transform is not None:
+                img = self.transform(img)
+            image_data.append(img)
+        label_data.append([sampled_class] * self.num_instances)
+
+        image_data = torch.stack(image_data)
+        label_data = torch.LongTensor(label_data)
+
+        return image_data, label_data
+
 
 def Omniglot(batch_sz, num_workers=2):
     # This dataset is only for training the Similarity Prediction Network on Omniglot background set

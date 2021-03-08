@@ -1,7 +1,20 @@
 import torch
 import torch.nn as nn
+from torchvision import models
+import torchvision.models.utils as ut
 import torch.nn.functional as F
 
+model_urls = {
+    'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
+    'resnet34': 'https://download.pytorch.org/models/resnet34-333f7ec4.pth',
+    'resnet50': 'https://download.pytorch.org/models/resnet50-19c8e357.pth',
+    'resnet101': 'https://download.pytorch.org/models/resnet101-5d3b4d8f.pth',
+    'resnet152': 'https://download.pytorch.org/models/resnet152-b121ed2d.pth',
+    'resnext50_32x4d': 'https://download.pytorch.org/models/resnext50_32x4d-7cdf4587.pth',
+    'resnext101_32x8d': 'https://download.pytorch.org/models/resnext101_32x8d-8ba56ff5.pth',
+    'wide_resnet50_2': 'https://download.pytorch.org/models/wide_resnet50_2-95faca4d.pth',
+    'wide_resnet101_2': 'https://download.pytorch.org/models/wide_resnet101_2-32ee1156.pth',
+}
 
 class PreActBlock(nn.Module):
     '''Pre-activation version of the BasicBlock.'''
@@ -112,3 +125,53 @@ def ResNet101(out_dim):
 
 def ResNet152(out_dim):
     return PreActResNet(PreActBottleneck, [3,8,36,3], num_classes=out_dim)
+
+class ResNetCustom(models.resnet.ResNet):   
+    """
+    Inherit ResNet to perform model surgery
+    """ 
+    def __init__(self, block, layers, out_dim):
+        super(ResNetCustom, self).__init__(block=block, layers=layers)
+        num_features = self.fc.in_features
+        self.fc = nn.Identity()
+        self.last = nn.Linear(num_features, out_dim)
+    
+    def logits(self, x):
+        x = self.last(x)
+        return x
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+
+        x = self.avgpool(x)
+        x = self.logits(x.view(x.size(0), -1))
+        return x
+
+
+def ResNetOH50(out_dim):
+    # download the pre-trained weights
+    state_dict = ut.load_state_dict_from_url(model_urls['resnet50'])
+    # remove the fc layer weights
+    state_dict.pop('fc.weight')
+    state_dict.pop('fc.bias')
+    # initialize the model with pre-trained weights
+    model = ResNetCustom(out_dim=out_dim, block=models.resnet.Bottleneck, layers=[3, 4, 6, 3])
+    msg = model.load_state_dict(state_dict, strict=False)
+    assert set(msg.missing_keys) == {'last.weight', 'last.bias'}
+    
+    return model
+
+def rename_attribute(obj, old_name, new_name):
+    obj._modules[new_name] = obj._modules.pop(old_name)
+    return obj
+
+if __name__ == '__main__':
+    print(ResNetOH50(65))
