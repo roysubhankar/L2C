@@ -92,10 +92,19 @@ def CIFAR100(batch_sz, num_workers=2):
     return train_loader, eval_loader
 
 def OfficeHome(batch_sz, num_workers=1, root_dir='data/', source_name='art', target_name='clipart', num_instances=4,
-              dataloading='random'):
+              dataloading='random', strong_augmentation=False):
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
     dset_transforms = {
+        # MoCo v1's aug: the same as InstDisc https://arxiv.org/abs/1805.01978
+        'strong_train_transforms': transforms.Compose([
+            transforms.RandomResizedCrop(224, scale=(0.6, 1.)),
+            transforms.RandomGrayscale(p=0.2),
+            transforms.ColorJitter(0.4, 0.4, 0.4, 0.4),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            normalize
+        ]),
         'train_transform': transforms.Compose([
             transforms.RandomResizedCrop(224),
             transforms.RandomHorizontalFlip(),
@@ -113,10 +122,11 @@ def OfficeHome(batch_sz, num_workers=1, root_dir='data/', source_name='art', tar
     
     if dataloading == 'random':
         train_dataset = torchvision.datasets.ImageFolder(root=os.path.join(root_dir, source_name),
-                                                     transform=dset_transforms['train_transform'])
+                            transform=dset_transforms['strong_train_transforms'] if strong_augmentation else dset_transforms['train_transform'])
     elif dataloading == 'balanced':
         train_dataset = OfficeHomeBalancedDataset(root_dir=root_dir, source_name=source_name, num_classes=65, 
-                                              transform=dset_transforms['train_transform'], num_instances=num_instances)
+                            transform=dset_transforms['strong_train_transforms'] if strong_augmentation else dset_transforms['train_transform'], 
+                            num_instances=num_instances)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_sz, shuffle=True, num_workers=num_workers)
     train_loader.num_classes = 65
 

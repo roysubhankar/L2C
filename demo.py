@@ -174,7 +174,8 @@ def run(args):
                                                                        args.root_dir,
                                                                        args.source_name, args.target_name,
                                                                        args.num_instances,
-                                                                       args.dataloading)
+                                                                       args.dataloading,
+                                                                       args.strong_augmentation)
     else:
         train_loader, eval_loader = loaderFuncs.__dict__[args.dataset](args.batch_size, args.workers)
 
@@ -270,6 +271,8 @@ def get_args(argv):
     parser.add_argument('--dataloading', type=str, default='random', choices=['random', 'balanced'])
     parser.add_argument('--source_name', type=str, default='art')
     parser.add_argument('--target_name', type=str, default='clipart')
+    parser.add_argument('--strong_augmentation', default=False, action='store_true',
+                        help="Use Moco like augmentations")
     parser.add_argument('--root_dir', type=str, default='data/')
     parser.add_argument('--dataset', type=str, default='MNIST', help="MNIST(default)|CIFAR10|CIFAR100|Omniglot|Omniglot_eval_Old_Church_Slavonic|OfficeHome ...")
     parser.add_argument('--out_dim', type=int, default=-1,
