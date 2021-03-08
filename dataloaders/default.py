@@ -91,7 +91,8 @@ def CIFAR100(batch_sz, num_workers=2):
 
     return train_loader, eval_loader
 
-def OfficeHome(batch_sz, num_workers=1, root_dir='data/', source_name='art', target_name='clipart', num_instances=4):
+def OfficeHome(batch_sz, num_workers=1, root_dir='data/', source_name='art', target_name='clipart', num_instances=4,
+              dataloading='random'):
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
     dset_transforms = {
@@ -110,16 +111,20 @@ def OfficeHome(batch_sz, num_workers=1, root_dir='data/', source_name='art', tar
         ])
     }
     
-    #train_dataset = torchvision.datasets.ImageFolder(root=os.path.join(root_dir, source_name),
-    #                                                 transform=dset_transforms['train_transform'])
-    train_dataset = OfficeHomeBalancedDataset(root_dir=root_dir, source_name=source_name, num_classes=65, 
+    if dataloading == 'random':
+        train_dataset = torchvision.datasets.ImageFolder(root=os.path.join(root_dir, source_name),
+                                                     transform=dset_transforms['train_transform'])
+    elif dataloading == 'balanced':
+        train_dataset = OfficeHomeBalancedDataset(root_dir=root_dir, source_name=source_name, num_classes=65, 
                                               transform=dset_transforms['train_transform'], num_instances=num_instances)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_sz, shuffle=True, num_workers=num_workers)
     train_loader.num_classes = 65
 
     test_dataset = torchvision.datasets.ImageFolder(root=os.path.join(root_dir, target_name),
                                                      transform=dset_transforms['test_transform'])
-    eval_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_sz * num_instances, shuffle=False, num_workers=num_workers)
+    
+    eval_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_sz * num_instances if dataloading == 'balanced' else batch_sz, 
+                                        shuffle=False, num_workers=num_workers)
     eval_loader.num_classes = 65
 
     return train_loader, eval_loader

@@ -173,7 +173,8 @@ def run(args):
         train_loader, eval_loader = loaderFuncs.__dict__[args.dataset](args.batch_size, args.workers, 
                                                                        args.root_dir,
                                                                        args.source_name, args.target_name,
-                                                                       args.num_instances)
+                                                                       args.num_instances,
+                                                                       args.dataloading)
     else:
         train_loader, eval_loader = loaderFuncs.__dict__[args.dataset](args.batch_size, args.workers)
 
@@ -266,6 +267,7 @@ def get_args(argv):
     parser.add_argument('--model_type', type=str, default='lenet', help="lenet(default)|vgg|resnet")
     parser.add_argument('--model_name', type=str, default='LeNet', help="LeNet(default)|LeNetC|VGGS|VGG8|VGG16|ResNet18|ResNet101|ResNetOH50 ...")
     parser.add_argument('--dataset_type', type=str, default='default')
+    parser.add_argument('--dataloading', type=str, default='random', choices=['random', 'balanced'])
     parser.add_argument('--source_name', type=str, default='art')
     parser.add_argument('--target_name', type=str, default='clipart')
     parser.add_argument('--root_dir', type=str, default='data/')
