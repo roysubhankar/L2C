@@ -163,7 +163,8 @@ def run(args):
     elif args.loss=='DPS':
         # Dense-Pair Similarity Learning
         LearnerClass = Learner_DensePairSimilarity
-        criterion = nn.CrossEntropyLoss()
+        #criterion = nn.CrossEntropyLoss()
+        criterion = modules.criterion.__dict__[args.loss]()
         args.out_dim = 2  # force it
 
     # Prepare dataloaders
@@ -234,11 +235,12 @@ def run(args):
         optim_args['momentum'] = args.momentum
     if args.dataset == 'OfficeHome':
         for name, param in model.named_parameters():
-            if ('layer4' not in name) and ('last' not in name):
+            if ('layer4' not in name) and ('layer3' not in name) and ('last' not in name):
                 param.requires_grad = False
             else:
                 param.requires_grad = True
-        optimizer = torch.optim.__dict__[args.optimizer]([{'params': model.layer4.parameters(), 'lr': args.lr / 10.},
+        optimizer = torch.optim.__dict__[args.optimizer]([{'params': model.layer3.parameters(), 'lr': args.lr / 10.},
+                                                          {'params': model.layer4.parameters(), 'lr': args.lr / 10.},
                                                           {'params': model.last.parameters()}], **optim_args)
     else:
         optimizer = torch.optim.__dict__[args.optimizer](model.parameters(), **optim_args)
