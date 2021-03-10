@@ -2,6 +2,7 @@ import os
 
 import torch
 import torch.utils.data as data
+import torch.utils.data.ConcatDataset as ConcatDataset
 import torchvision
 from torchvision import transforms
 from .sampler import RandSubClassSampler
@@ -121,8 +122,12 @@ def OfficeHome(batch_sz, num_workers=1, root_dir='data/', source_name='art', tar
     }
     
     if dataloading == 'random':
-        train_dataset = torchvision.datasets.ImageFolder(root=os.path.join(root_dir, source_name),
+        train_datasets = list()
+        for src_domain in source_name:
+            train_dataset = torchvision.datasets.ImageFolder(root=os.path.join(root_dir, src_domain),
                             transform=dset_transforms['strong_train_transforms'] if strong_augmentation else dset_transforms['train_transform'])
+            train_datasets.append(train_dataset)
+        train_dataset = ConcatDataset(train_datasets)
     elif dataloading == 'balanced':
         train_dataset = OfficeHomeBalancedDataset(root_dir=root_dir, source_name=source_name, num_classes=65, 
                             transform=dset_transforms['strong_train_transforms'] if strong_augmentation else dset_transforms['train_transform'], 
