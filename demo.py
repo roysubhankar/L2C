@@ -163,8 +163,10 @@ def run(args):
     elif args.loss=='DPS':
         # Dense-Pair Similarity Learning
         LearnerClass = Learner_DensePairSimilarity
-        #criterion = nn.CrossEntropyLoss()
-        criterion = modules.criterion.__dict__[args.loss]()
+        if args.dataloading == 'random':
+            criterion = nn.CrossEntropyLoss()
+        elif args.dataloading == 'balanced':
+            criterion = modules.criterion.__dict__[args.loss]()
         args.out_dim = 2  # force it
 
     # Prepare dataloaders
@@ -271,7 +273,7 @@ def get_args(argv):
     parser.add_argument('--model_name', type=str, default='LeNet', help="LeNet(default)|LeNetC|VGGS|VGG8|VGG16|ResNet18|ResNet101|ResNetOH50 ...")
     parser.add_argument('--dataset_type', type=str, default='default')
     parser.add_argument('--dataloading', type=str, default='random', choices=['random', 'balanced'])
-    parser.add_argument('--source_name', type=str, default='art')
+    parser.add_argument('--source_name', nargs='+', default=['art', 'product', 'real'])
     parser.add_argument('--target_name', type=str, default='clipart')
     parser.add_argument('--strong_augmentation', default=False, action='store_true',
                         help="Use Moco like augmentations")
@@ -292,7 +294,7 @@ def get_args(argv):
     parser.add_argument('--schedule', nargs="+", type=int, default=[10, 20],
                         help="The list of epoch numbers to reduce learning rate by factor of 0.1")
     parser.add_argument('--optimizer', type=str, default='Adam', choices=['Adam', 'SGD'])
-    parser.add_argument('--print_freq', type=float, default=100, help="Print the log at every x iteration")
+    parser.add_argument('--print_freq', type=float, default=20, help="Print the log at every x iteration")
     parser.add_argument('--resume', type=str, default='', help="The path to checkpoint file (*.checkpoint.pth)")
     parser.add_argument('--pretrained_model', type=str, default='',
                         help="The path to model file (*.best_model.pth). Do NOT use checkpoint file here.")

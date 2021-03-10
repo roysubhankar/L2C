@@ -145,7 +145,6 @@ class OfficeHomeBalancedDataset(data.Dataset):
         self.root_dir = root_dir
         self.source_name = source_name
         self.num_instances = num_instances
-        self.source_path = os.path.join(self.root_dir, self.source_name + '.txt')
         self.num_classes = num_classes
         self.source_images = self.load_dataset() # create a dict of lists
         self.transform = transform
@@ -153,11 +152,15 @@ class OfficeHomeBalancedDataset(data.Dataset):
     def load_dataset(self):
         source_image_list = {key: [] for key in range(self.num_classes)}
         self.num_images = 0
-        with open(self.source_path) as f:
-            for ind, line in enumerate(f.readlines()):
-                self.num_images += 1
-                image_dir, label = line.split(' ')
-                source_image_list[int(label)].append(image_dir)
+        # iterate over all the source domains
+        for src_domain in self.source_name:
+            source_path = os.path.join(self.root_dir, src_domain + '.txt')
+            with open(source_path) as f:
+                for ind, line in enumerate(f.readlines()):
+                    self.num_images += 1
+                    image_dir, label = line.split(' ')
+                    img_path = os.path.join(self.root_dir, src_domain, image_dir)
+                    source_image_list[int(label)].append(img_path)
         
         return source_image_list
 
@@ -178,7 +181,7 @@ class OfficeHomeBalancedDataset(data.Dataset):
         
         # apply image transforms
         for i, sample_idx in enumerate(sample_idxs):
-            img_path = os.path.join(self.root_dir, self.source_name, self.source_images[sampled_class][sample_idx])
+            img_path = self.source_images[sampled_class][sample_idx]
             img = Image.open(img_path).convert('RGB')
             if self.transform is not None:
                 img = self.transform(img)
