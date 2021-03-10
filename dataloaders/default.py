@@ -168,7 +168,7 @@ class OfficeHomeBalancedDataset(data.Dataset):
         image_data = []
         label_data = []
 
-        np.random.seed(item)
+        #np.random.seed(item)
         sampled_class = np.random.choice(range(self.num_classes), size=1, replace=False)[0] # pick a class at random
         t = self.source_images[sampled_class] # get all the instance paths of the sampled class
         if len(t) >= self.num_instances:

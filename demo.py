@@ -61,7 +61,7 @@ def train(epoch, train_loader, learner, args):
     if args.print_freq>0:  # Enable to print mini-log
         print('Itr            |Batch time     |Data Time      |Loss')
     for i, (input, target) in enumerate(train_loader):
-
+        #print(target)
         data_time.update(data_timer.toc())  # measure data loading time
 
         # Prepare the inputs
