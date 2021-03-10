@@ -2,7 +2,7 @@ import os
 
 import torch
 import torch.utils.data as data
-from torch.utils.data.ConcatDataset import ConcatDataset
+from torch.utils.data import ConcatDataset
 import torchvision
 from torchvision import transforms
 from .sampler import RandSubClassSampler
