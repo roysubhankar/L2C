@@ -2,6 +2,7 @@ import os
 import sys
 import argparse
 from termcolor import colored
+import wandb
 
 import torch
 import torch.nn as nn
@@ -105,7 +106,7 @@ def train(epoch, train_loader, learner, args):
         print('[Train] dissimilar pair f1-score:', confusion.f1score(0))
 
 
-def evaluate(eval_loader, model, args):
+def evaluate(eval_loader, model, args, epoch):
 
     # Initialize all meters
     confusion = Confusion(args.out_dim)
@@ -144,6 +145,9 @@ def evaluate(eval_loader, model, args):
         KPI = confusion.f1score(1)
         print('[Test] similar pair f1-score:', KPI)  # f1-score for similar pair (label:1)
         print('[Test] dissimilar pair f1-score:', confusion.f1score(0))
+        wandb.log({'val/precision-similar': confusion.precision(1) * 100}, step=epoch)
+        wandb.log({'val/recall-similar': confusion.recall(1) * 100}, step=epoch)
+        wandb.log({'val/f1-similar': KPI * 100}, step=epoch)
     return KPI
 
 
@@ -253,10 +257,11 @@ def run(args):
     if args.resume:
         args.start_epoch = learner.resume(args.resume) + 1  # Start from next epoch
     KPI = 0
+
     for epoch in range(args.start_epoch, args.epochs):
         train(epoch, train_loader, learner, args)
         if eval_loader is not None and ((not args.skip_eval) or (epoch==args.epochs-1)):
-            KPI = evaluate(eval_loader, model, args)
+            KPI = evaluate(eval_loader, model, args, epoch)
         # Save checkpoint at each LR steps and the end of optimization
         if epoch+1 in args.schedule+[args.epochs]:
             learner.snapshot("outputs/%s_%s_%s"%(args.dataset, args.model_name, args.saveid), KPI)
@@ -319,6 +324,27 @@ def get_args(argv):
     args.saveid = args.loss if args.saveid == '' else args.saveid
     args.cluster2Class = None
     args.SPN = None
+
+    # runname nomenclature
+    save_folder_terms = [
+        f'model{args.loss}',
+    ]
+
+    save_folder_terms.append(f'dataset{args.dataset}')
+    save_folder_terms.append(f"src{'_'.join(args.source_name)}")
+    save_folder_terms.append(f"tgt{args.target_name}")
+    save_folder_terms.append(f'dataloading{args.dataloading}')
+    if args.dataloading == 'random':
+        save_folder_terms.append(f'bs{args.batch_size}')
+    elif args.dataloading == 'balanced':
+        save_folder_terms.append(f'bs{args.batch_size * args.num_instances}')
+        save_folder_terms.append(f'num_instances{args.num_instances}')
+    
+    save_folder_terms.append(f'aug{args.strong_augmentation}')
+
+    # init wandb for logging
+    run_name = '_'.join(save_folder_terms)
+    wandb.init(name=run_name, project='domain-g', config=args, notes=' '.join(sys.argv))
 
     return args
 

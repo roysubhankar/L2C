@@ -132,7 +132,7 @@ def OfficeHome(batch_sz, num_workers=1, root_dir='data/', source_name='art', tar
         train_dataset = OfficeHomeBalancedDataset(root_dir=root_dir, source_name=source_name, num_classes=65, 
                             transform=dset_transforms['strong_train_transforms'] if strong_augmentation else dset_transforms['train_transform'], 
                             num_instances=num_instances)
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_sz, shuffle=True, num_workers=num_workers)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_sz, shuffle=True, num_workers=num_workers, drop_last=True)
     train_loader.num_classes = 65
 
     test_dataset = torchvision.datasets.ImageFolder(root=os.path.join(root_dir, target_name),
