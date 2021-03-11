@@ -138,8 +138,7 @@ def OfficeHome(batch_sz, num_workers=1, root_dir='data/', source_name='art', tar
     test_dataset = torchvision.datasets.ImageFolder(root=os.path.join(root_dir, target_name),
                                                      transform=dset_transforms['test_transform'])
     
-    eval_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_sz * num_instances if dataloading == 'balanced' else batch_sz, 
-                                        shuffle=False, num_workers=num_workers)
+    eval_loader = torch.utils.data.DataLoader(test_dataset, batch_size=128, shuffle=False, num_workers=num_workers)
     eval_loader.num_classes = 65
 
     return train_loader, eval_loader

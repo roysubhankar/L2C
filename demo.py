@@ -327,20 +327,20 @@ def get_args(argv):
 
     # runname nomenclature
     save_folder_terms = [
-        f'model{args.loss}',
+        f'model:{args.loss}',
     ]
 
-    save_folder_terms.append(f'dataset{args.dataset}')
-    save_folder_terms.append(f"src{'_'.join(args.source_name)}")
-    save_folder_terms.append(f"tgt{args.target_name}")
-    save_folder_terms.append(f'dataloading{args.dataloading}')
+    save_folder_terms.append(f'dataset:{args.dataset}')
+    save_folder_terms.append(f"src:{','.join(args.source_name)}")
+    save_folder_terms.append(f"tgt:{args.target_name}")
+    save_folder_terms.append(f'dataloading:{args.dataloading}')
     if args.dataloading == 'random':
-        save_folder_terms.append(f'bs{args.batch_size}')
+        save_folder_terms.append(f'bs:{args.batch_size}')
     elif args.dataloading == 'balanced':
-        save_folder_terms.append(f'bs{args.batch_size * args.num_instances}')
-        save_folder_terms.append(f'num_instances{args.num_instances}')
+        save_folder_terms.append(f'bs:{args.batch_size * args.num_instances}')
+        save_folder_terms.append(f'num_instances:{args.num_instances}')
     
-    save_folder_terms.append(f'aug{args.strong_augmentation}')
+    save_folder_terms.append(f'aug:{args.strong_augmentation}')
 
     # init wandb for logging
     run_name = '_'.join(save_folder_terms)
