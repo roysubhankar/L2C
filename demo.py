@@ -278,8 +278,8 @@ def get_args(argv):
     parser.add_argument('--model_name', type=str, default='LeNet', help="LeNet(default)|LeNetC|VGGS|VGG8|VGG16|ResNet18|ResNet101|ResNetOH50 ...")
     parser.add_argument('--dataset_type', type=str, default='default')
     parser.add_argument('--dataloading', type=str, default='random', choices=['random', 'balanced'])
-    parser.add_argument('--source_name', nargs='+', default=['art', 'product', 'real'])
-    parser.add_argument('--target_name', type=str, default='clipart')
+    parser.add_argument('--source_name', nargs='+', default=['art'])
+    parser.add_argument('--target_name', nargs='+', default=['clipart', 'product', 'real'])
     parser.add_argument('--strong_augmentation', default=False, action='store_true',
                         help="Use Moco like augmentations")
     parser.add_argument('--root_dir', type=str, default='data/')
@@ -331,8 +331,8 @@ def get_args(argv):
     ]
 
     save_folder_terms.append(f'dataset:{args.dataset}')
-    save_folder_terms.append(f"src:{','.join(args.source_name)}")
-    save_folder_terms.append(f"tgt:{args.target_name}")
+    save_folder_terms.append(f"src:{','.join(args.source_name) if isinstance(args.source_name, list) else args.source_name}")
+    save_folder_terms.append(f"tgt:{','.join(args.target_name) if isinstance(args.target_name, list) else args.target_name}")
     save_folder_terms.append(f'dataloading:{args.dataloading}')
     if args.dataloading == 'random':
         save_folder_terms.append(f'bs:{args.batch_size}')

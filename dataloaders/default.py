@@ -121,6 +121,7 @@ def OfficeHome(batch_sz, num_workers=1, root_dir='data/', source_name='art', tar
         ])
     }
     
+    # train loader
     if dataloading == 'random':
         train_datasets = list()
         for src_domain in source_name:
@@ -135,8 +136,13 @@ def OfficeHome(batch_sz, num_workers=1, root_dir='data/', source_name='art', tar
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_sz, shuffle=True, num_workers=num_workers, drop_last=True)
     train_loader.num_classes = 65
 
-    test_dataset = torchvision.datasets.ImageFolder(root=os.path.join(root_dir, target_name),
+    # eval loader
+    test_datasets = list()
+    for tgt_domain in target_name:
+        test_dataset = torchvision.datasets.ImageFolder(root=os.path.join(root_dir, tgt_domain),
                                                      transform=dset_transforms['test_transform'])
+        test_datasets.append(test_dataset)
+    test_dataset = ConcatDataset(test_datasets)
     
     eval_loader = torch.utils.data.DataLoader(test_dataset, batch_size=128, shuffle=False, num_workers=num_workers)
     eval_loader.num_classes = 65
