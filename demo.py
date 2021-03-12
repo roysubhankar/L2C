@@ -167,10 +167,10 @@ def run(args):
     elif args.loss=='DPS':
         # Dense-Pair Similarity Learning
         LearnerClass = Learner_DensePairSimilarity
-        if args.dataloading == 'random':
-            criterion = nn.CrossEntropyLoss()
-        elif args.dataloading == 'balanced':
+        if args.balanced_loss:
             criterion = modules.criterion.__dict__[args.loss]()
+        else:
+            criterion = nn.CrossEntropyLoss()
         args.out_dim = 2  # force it
 
     # Prepare dataloaders
@@ -278,6 +278,8 @@ def get_args(argv):
     parser.add_argument('--model_name', type=str, default='LeNet', help="LeNet(default)|LeNetC|VGGS|VGG8|VGG16|ResNet18|ResNet101|ResNetOH50 ...")
     parser.add_argument('--dataset_type', type=str, default='default')
     parser.add_argument('--dataloading', type=str, default='random', choices=['random', 'balanced'])
+    parser.add_argument('--balanced_loss', default=False, action='store_true',
+                        help="Use balanced pos/neg samples for the loss")
     parser.add_argument('--source_name', nargs='+', default=['art'])
     parser.add_argument('--target_name', nargs='+', default=['clipart', 'product', 'real'])
     parser.add_argument('--strong_augmentation', default=False, action='store_true',
@@ -341,6 +343,7 @@ def get_args(argv):
         save_folder_terms.append(f'num_instances:{args.num_instances}')
     
     save_folder_terms.append(f'aug:{args.strong_augmentation}')
+    save_folder_terms.append(f'bal-loss:{args.balanced_loss}')
 
     # init wandb for logging
     run_name = '_'.join(save_folder_terms)
