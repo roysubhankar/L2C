@@ -13,7 +13,7 @@ from torch.optim.lr_scheduler import MultiStepLR
 
 from learners.classification import Learner_Classification
 from learners.clustering import Learner_Clustering
-from learners.similarity import Learner_DensePairSimilarity
+from learners.similarity import Learner_DensePairSimilarity, Learner_EdgeNetwork
 from utils.metric import Confusion, Timer, AverageMeter
 from modules.pairwise import Class2Simi
 import modules.criterion
@@ -165,8 +165,11 @@ def run(args):
         LearnerClass = Learner_Clustering
         criterion = modules.criterion.__dict__[args.loss]()
     elif args.loss=='DPS':
-        # Dense-Pair Similarity Learning
-        LearnerClass = Learner_DensePairSimilarity
+        if args.network == 'EdgeNetwork':
+            LearnerClass = Learner_EdgeNetwork
+        else:
+            # Dense-Pair Similarity Learning
+            LearnerClass = Learner_DensePairSimilarity
         if args.balanced_loss:
             criterion = modules.criterion.__dict__[args.loss]()
         else:
@@ -296,6 +299,8 @@ def get_args(argv):
     parser.add_argument('--gamma', type=float, default=0.5, help='lr decay factor')
     parser.add_argument('--momentum', type=float, default=0.9, help='optimizer momentum')
     parser.add_argument('--weight_decay', type=float, default=1e-4, help='optimizer weight decay')
+    parser.add_argument('--network', type=str, default='none', choices=['none', 'EdgeNetwork'],
+                        help="CE(cross-entropy)|KCL|MCL(default)|DPS(Dense-Pair Similarity)")
     parser.add_argument('--loss', type=str, default='MCL', choices=['CE', 'KCL', 'MCL', 'DPS'],
                         help="CE(cross-entropy)|KCL|MCL(default)|DPS(Dense-Pair Similarity)")
     parser.add_argument('--schedule', nargs="+", type=int, default=[10, 20],
@@ -318,6 +323,10 @@ def get_args(argv):
     parser.add_argument('--SPN_model_name', type=str, default='VGGS', help="This option is only valid when use_SPN=True")
     parser.add_argument('--SPN_pretrained_model', type=str, default='outputs/Omniglot_VGGS_DPS.model.pth', help="This option is only valid when use_SPN=True")
 
+    # for wandb
+    parser.add_argument('--wandb_mode', default='online', choices=['online', 'offline', 'disabled'],
+                        help="default is online")
+
     args = parser.parse_args(argv)
 
     # Initialize some useful flags
@@ -331,6 +340,9 @@ def get_args(argv):
     save_folder_terms = [
         f'model:{args.loss}',
     ]
+
+    if args.network == 'EdgeNetwork':
+        save_folder_terms.append(f'net:{args.network}')
 
     save_folder_terms.append(f'dataset:{args.dataset}')
     save_folder_terms.append(f"src:{','.join(args.source_name) if isinstance(args.source_name, list) else args.source_name}")
@@ -347,7 +359,7 @@ def get_args(argv):
 
     # init wandb for logging
     run_name = '_'.join(save_folder_terms)
-    wandb.init(name=run_name, project='domain-g', config=args, notes=' '.join(sys.argv))
+    wandb.init(name=run_name, project='domain-g', config=args, notes=' '.join(sys.argv), mode=args.wandb_mode)
 
     return args
 
